@@ -1,0 +1,11 @@
+.venv/
+__pycache__/
+*.py[cod]
+.DS_Store
+build/
+dist/
+*.spec
+.env
+*.log
+release/
+result.xlsx

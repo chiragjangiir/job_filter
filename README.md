@@ -1,44 +1,81 @@
-# 公考职位表筛选器 — 使用与打包说明
+# 公考职位表筛选器 · Job Filter
 
-## 这是什么
-一个双击运行的小工具：选择职位表 Excel → 勾选个人条件 → 输出筛选结果 Excel。
-输出方式为**在原表副本上删除不符合条件的行**，保留原表全部格式、标题行和列宽，
-等效于用 Excel 自带筛选后另存，不重写任何内容。
+**把一整份 Excel 职位表，缩小成值得逐条核对的候选清单。**
 
-## 界面与条件
-- ① 选择职位表 Excel（支持 .xlsx / .xlsm，多 sheet 自动全部处理，自动识别表头行）
-- ② 个人条件（均可自由组合）：
-  - 学历：大专 / 本科 / 研究生（剔除要求高于本人学历的岗位）
-  - 是否应届（非应届则剔除"仅限应届"岗位）
-  - 基层工作年限（剔除要求年限高于本人的岗位，识别"两年/2年以上基层工作经历"等写法）
-  - 政治面貌：群众 / 共青团员 / 中共党员（非党员则剔除要求党员的岗位）
-  - 专业关键词：逗号分隔，默认"软件工程,计算机类,计算机科学与技术"，可自行增删；
-    可勾选是否包含"专业不限"岗位。
-    注：专业匹配只看与本人学历对应的段落（如职位表分"本科：…／研究生：…"两段，
-    本科考生只匹配本科段，避免误报）。
-- ③ 点击"开始筛选并另存为"，选择保存位置即可。
+[English](README.en.md) · [试用样例](examples/demo.xlsx) · [预期结果](examples/demo-filtered.xlsx) · [使用指南](docs/USAGE.md) · [版本记录](CHANGELOG.md)
 
-## 获得 Windows / macOS 双击运行的程序（三选一）
+[![Checks](https://github.com/shanghe000/job_filter/actions/workflows/quality.yml/badge.svg)](https://github.com/shanghe000/job_filter/actions/workflows/quality.yml)
+[![Build](https://github.com/shanghe000/job_filter/actions/workflows/build.yml/badge.svg)](https://github.com/shanghe000/job_filter/actions/workflows/build.yml)
 
-### 方式A：GitHub Actions 云端自动打包（推荐，本机零环境）
-1. 在 github.com 新建一个仓库（私有即可）
-2. 上传两个文件：`filter_gui.py` 和 `.github/workflows/build.yml`（即本包中的 build.yml，
-   注意放到 .github/workflows/ 目录下）
-3. 上传后自动触发构建，约 3 分钟后在仓库 Actions 页面下载：
-   - 职位筛选器-Windows（.exe）
-   - 职位筛选器-macOS
-4. macOS 首次打开如提示"无法验证开发者"：系统设置 → 隐私与安全性 → 仍要打开。
+一个本地运行的 Python 桌面工具：选择 Excel，设置学历、专业、应届身份等条件，将候选岗位另存为新文件。也可通过命令行处理。
 
-### 方式B：在自己电脑上打包（需装 Python）
-    pip install openpyxl pyinstaller
-    pyinstaller -F -w -n 职位筛选器 filter_gui.py
-产物在 dist/ 目录。Windows 上执行得到 .exe，Mac 上执行得到 Mac 版。
+- **离线处理**：不上传职位表或个人条件，不需要账号。
+- **保留原件**：拒绝覆盖输入文件，保存失败时保留已有输出。
+- **可核对**：提供完全虚构的输入与输出样例，明确哪些条件属于启发式匹配。
+- **保留基础格式**：对支持的普通表格保留单元格样式、列宽、行高与标题区合并单元格。
 
-### 方式C：不打包，直接运行源码
-    pip install openpyxl
-    python filter_gui.py
+> 本工具用于候选初筛，不判断报考资格。正式报名时请逐条核对原始公告和岗位要求。
 
-## 注意事项
-- 筛选为关键词匹配，报名前请人工复核最终岗位原文，拿不准打职位表中的咨询电话。
-- 若某张表未被处理，通常是表头行不含"专业""学历"字样，请反馈表样式以便适配。
-- 数万行的国考全国职位表处理约需数十秒，属正常。
+![桌面应用实际界面](docs/images/desktop.png)
+
+## 一分钟试用
+
+需要 Python 3.10+。图形界面需要 Tcl/Tk 8.6+；macOS 建议使用 python.org 的安装包，避免系统旧版 Tk。
+
+```sh
+git clone https://github.com/shanghe000/job_filter.git
+cd job_filter
+python -m venv .venv
+# macOS / Linux
+source .venv/bin/activate
+# Windows PowerShell 改为：.venv\Scripts\Activate.ps1
+python -m pip install -r requirements.txt
+python filter_gui.py
+```
+
+选择 `examples/demo.xlsx`，保持默认条件，另存为新文件。应保留 **A · 软件支持** 和 **D · 综合服务** 两个岗位。
+可与 `examples/demo-filtered.xlsx` 比较。样例中的岗位、条件均为虚构。
+
+### 不打开界面
+
+```sh
+python filter_cli.py examples/demo.xlsx result.xlsx --degree 本科 --majors 计算机 --years 0
+```
+
+重复运行需使用新的输出名，或明确加上 `--overwrite`。输入文件始终不能作为输出目标。
+
+## 下载桌面包
+
+[Actions → Build desktop apps](https://github.com/shanghe000/job_filter/actions/workflows/build.yml) 提供 Windows x64 与 macOS Apple Silicon 的打包产物，下载 Actions 产物需登录 GitHub。
+发布流程会先生成包含压缩包和校验值的 **Release 草稿**；只有维护者核对后公开的版本，才会出现在 [Releases](https://github.com/shanghe000/job_filter/releases)。
+桌面包尚未进行商业代码签名或 Apple 公证。Intel Mac 请从源码运行。
+
+## 支持范围
+
+| 项目 | 当前行为 |
+| --- | --- |
+| 格式 | `.xlsx`；`.xlsm` 保留 VBA 存储，不执行宏；不支持 `.xls` |
+| 表头 | 前 15 行中同时出现“专业”和“学历”的一行 |
+| 多工作表 | 处理符合条件的工作表，未识别的页原样保留并写入日志 |
+| 学历、专业 | 关键词初筛；按学历对应的专业段落匹配 |
+| 空行 | 从已识别工作表的数据区移除，不计作职位 |
+| 复杂工作簿 | 含公式、图表、图片、表格对象、条件格式、验证或命名范围时拒绝处理 |
+| 合并单元格 | 仅支持表头及其上方；数据区合并需先在副本中展开 |
+
+不承诺完整保留 Excel 的所有高级功能。详见 [使用指南与限制](docs/USAGE.md)。
+
+## 参与开发
+
+```sh
+python -m unittest discover -s tests -v
+python scripts/make_example.py
+```
+
+核心逻辑在 `filter_core.py`，桌面界面与命令行分别位于 `filter_gui.py` 和 `filter_cli.py`。
+请使用合成数据复现问题，避免在 Issue 中上传个人信息或未授权表格。
+
+[贡献说明](CONTRIBUTING.md) · [安全政策](SECURITY.md) · [路线图](docs/ROADMAP.md)
+
+## 许可证
+
+[MIT License](LICENSE) © shanghe000。欢迎使用、修改和贡献；分发时请保留许可声明。
