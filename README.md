@@ -1,5 +1,7 @@
 # 公考职位表筛选器 · Job Filter
 
+![Project cover — xuan jing](docs/images/cover.svg)
+
 **把一整份 Excel 职位表，缩小成值得逐条核对的候选清单。**
 
 [English](README.en.md) · [试用样例](examples/demo.xlsx) · [预期结果](examples/demo-filtered.xlsx) · [使用指南](docs/USAGE.md) · [版本记录](CHANGELOG.md)

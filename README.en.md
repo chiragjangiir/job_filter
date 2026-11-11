@@ -1,5 +1,7 @@
 # Job Filter
 
+![Project cover — xuan jing](docs/images/cover.svg)
+
 **Turn a long Excel job list into a short list worth reviewing.**
 
 [中文](README.md) · [Sample input](examples/demo.xlsx) · [Expected output](examples/demo-filtered.xlsx)
