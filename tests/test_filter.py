@@ -34,6 +34,87 @@ class RulesTest(unittest.TestCase):
         self.assertTrue(row_pass(['A', '本科', '计算机', '应届毕业生和社会人员', 0, '不限'], HEADERS, CFG))
         self.assertFalse(row_pass(['A', '本科', '计算机', '', 0, '中共党员'], HEADERS, CFG))
 
+    def test_work_years_header_variations_and_values(self):
+        headers_with_suffix = ['岗位', '学历', '专业', '招考对象', '基层工作最低年限（年）', '政治面貌']
+        cases = [
+            # (name, raw_years, user_years, expected_pass, reason)
+            ('整数0', 0, 0, True, '要求0年，用户具备0年经验，符合条件保留'),
+            ('字符串"0"', '0', 0, True, '字符串0年，符合0年年限要求保留'),
+            ('整数2', 2, 0, False, '要求2年，用户仅具备0年经验，应排除'),
+            ('字符串"2"', '2', 0, False, '字符串2年，超过配置的0年年限应排除'),
+            ('带“年”文本"2年"', '2年', 0, False, '带“年”文本2年，超过0年应排除'),
+            ('带中文数字“两年”', '两年', 0, False, '中文数字两年，超过0年应排除'),
+            ('文本"不限"', '不限', 0, True, '不限基层工作年限，应保留'),
+            ('空值None', None, 0, True, '未填写年限默认不作限制，应保留'),
+            ('空格文本', '   ', 0, True, '空白文本默认不作限制，应保留'),
+            ('用户有2年经验要求2年', '2年', 2, True, '要求2年且用户具备2年经验，应保留'),
+            ('用户有2年经验要求3年', '3年', 2, False, '要求3年超过用户具备的2年经验，应排除'),
+        ]
+        for name, raw_years, user_years, expected_pass, reason in cases:
+            with self.subTest(case=name, reason=reason):
+                cfg = {**CFG, 'years': user_years}
+                row = ['岗位A', '本科', '计算机', '不限', raw_years, '不限']
+                self.assertEqual(row_pass(row, headers_with_suffix, cfg), expected_pass, f"{name}: {reason}")
+
+    def test_degree_segmented_majors_table_driven(self):
+        headers = ['岗位', '学历', '专业', '招考对象', '基层工作最低年限', '政治面貌']
+        cases = [
+            # (name, major_text, target_degree, search_majors, expected_pass, reason)
+            (
+                '本科段命中计算机且配置本科',
+                '本科：计算机科学与技术；硕士：工商管理',
+                '本科',
+                ['计算机'],
+                True,
+                '当前学历为本科，匹配本科段内的计算机专业，应保留',
+            ),
+            (
+                '硕士段为其他专业且配置研究生',
+                '本科：计算机科学与技术；硕士：工商管理',
+                '研究生',
+                ['计算机'],
+                False,
+                '当前学历为研究生，仅匹配硕士段（工商管理），不包含计算机，应排除',
+            ),
+            (
+                '本科段为其他专业且配置本科',
+                '本科：汉语言文学；硕士：软件工程',
+                '本科',
+                ['软件工程'],
+                False,
+                '当前学历为本科，本科段为汉语言文学，不包含软件工程，应排除',
+            ),
+            (
+                '硕士段命中软件工程且配置研究生',
+                '本科：汉语言文学；硕士：软件工程',
+                '研究生',
+                ['软件工程'],
+                True,
+                '当前学历为研究生，硕士段为软件工程，应保留',
+            ),
+            (
+                '英文冒号和分号格式下本科段匹配',
+                '本科:计算机类;硕士:电子信息',
+                '本科',
+                ['计算机'],
+                True,
+                '英文冒号和分号分隔下正确提取本科段计算机专业，应保留',
+            ),
+            (
+                '多学历段落中博士段不干扰硕士匹配',
+                '本科：数学；硕士：统计学；博士：计算机',
+                '硕士',
+                ['统计学'],
+                True,
+                '当前配置硕士，仅提取硕士段统计学，应保留',
+            ),
+        ]
+        for name, major_text, target_degree, search_majors, expected_pass, reason in cases:
+            with self.subTest(case=name, reason=reason):
+                cfg = {**CFG, 'degree': target_degree, 'majors': search_majors, 'allow_unlimited': False}
+                row = ['岗位A', target_degree, major_text, '不限', 0, '不限']
+                self.assertEqual(row_pass(row, headers, cfg), expected_pass, f"{name}: {reason}")
+
 
 class WorkbookTest(unittest.TestCase):
     def setUp(self):
@@ -123,6 +204,17 @@ class WorkbookTest(unittest.TestCase):
         cli = Path(__file__).resolve().parents[1] / 'filter_cli.py'
         result = subprocess.run([sys.executable, str(cli), str(self.src), str(self.dst), '--majors', '计算机'],
                                 capture_output=True, env={**os.environ, 'PYTHONIOENCODING': 'ascii'})
+        self.assertEqual(result.returncode, 0, result.stderr.decode('utf-8'))
+        self.assertIn('完成', result.stdout.decode('utf-8'))
+        self.assertTrue(self.dst.exists())
+
+    def test_cli_supports_chinese_comma_separated_majors(self):
+        cli = Path(__file__).resolve().parents[1] / 'filter_cli.py'
+        result = subprocess.run(
+            [sys.executable, str(cli), str(self.src), str(self.dst), '--majors', '软件工程，计算机类，大数据', '--overwrite'],
+            capture_output=True,
+            env={**os.environ, 'PYTHONIOENCODING': 'utf-8'}
+        )
         self.assertEqual(result.returncode, 0, result.stderr.decode('utf-8'))
         self.assertIn('完成', result.stdout.decode('utf-8'))
         self.assertTrue(self.dst.exists())
